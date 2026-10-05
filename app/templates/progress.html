@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}ความก้าวหน้า · ฟิตตามคลิป{% endblock %}
+{% block body %}
+<main class="page wide progress">
+  <h1>ความก้าวหน้า</h1>
+
+  <section class="week-now" aria-live="polite">
+    <dl class="figures four" id="now"></dl>
+  </section>
+
+  <section class="block">
+    <h2>บันทึกประจำสัปดาห์</h2>
+    <p class="hint first">ชั่งน้ำหนักวันเดียวกันของทุกสัปดาห์ ช่วงเช้าหลังตื่นนอน จะได้เทียบกันได้แม่นที่สุด บันทึกซ้ำในสัปดาห์เดียวกันจะแทนค่าเดิม</p>
+    <form id="checkin" class="checkin">
+      <label>น้ำหนัก
+        <span class="input-unit"><input type="number" name="weight_kg" min="30" max="300" step="0.1" required inputmode="decimal" value="{{ user.weight_kg }}"><span>กก.</span></span>
+      </label>
+      <label>รอบเอว (ไม่บังคับ)
+        <span class="input-unit"><input type="number" name="waist_cm" min="40" max="250" step="0.5" inputmode="decimal"><span>ซม.</span></span>
+      </label>
+      <button type="submit" class="btn btn-primary">บันทึก</button>
+    </form>
+  </section>
+
+  <section class="block">
+    <h2>น้ำหนัก 8 สัปดาห์ล่าสุด</h2>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section class="block">
+    <h2>รายสัปดาห์</h2>
+    <div class="table-wrap">
+      <table class="weeks">
+        <thead><tr>
+          <th scope="col">สัปดาห์เริ่ม</th><th scope="col">น้ำหนัก</th><th scope="col">รอบเอว</th>
+          <th scope="col">ทำตามแผน</th><th scope="col">วันที่ออกกำลังกาย</th><th scope="col">นาที</th><th scope="col">แคลที่เผา</th>
+        </tr></thead>
+        <tbody id="weeks"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>ให้ AI วิเคราะห์แนวโน้ม</h2>
+    <button type="button" class="btn btn-outline" id="insight-btn">วิเคราะห์ความก้าวหน้า</button>
+    <p class="error" id="insight-error" role="alert" hidden></p>
+    <div class="advice" id="insight" hidden>
+      <p id="insight-overview"></p>
+      <ul id="insight-list"></ul>
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="/static/progress.js"></script>{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}ข้อมูลของฉัน · ฟิตตามคลิป{% endblock %}
+{% block body_class %}{% if not editing %}no-nav{% endif %}{% endblock %}
+{% block body %}
+<main class="page">
+  {% if editing %}
+  <h1>ข้อมูลของฉัน</h1>
+  <p class="lead">แก้แล้วระบบจะคำนวณแคลอรี่ จัดท่า และวิเคราะห์ตารางใหม่ให้ตามข้อมูลนี้</p>
+  {% else %}
+  <h1>สวัสดี {{ user.display_name }}</h1>
+  <p class="lead">ตอบคำถามสั้นๆ ครั้งเดียว เราจะใช้ข้อมูลนี้จัดท่า จำนวนเซต และวิเคราะห์ตารางให้เหมาะกับคุณ</p>
+  {% endif %}
+
+  {% if errors %}
+  <div class="error" role="alert">
+    {% for e in errors %}<p>{{ e }}</p>{% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/onboarding" class="form" id="profile-form">
+    <fieldset class="choice">
+      <legend>คุณออกกำลังกายอยู่ในระดับไหน</legend>
+      <div class="cards">
+        {% for key, lv in levels.items() %}
+        <label class="card-option">
+          <input type="radio" name="fitness_level" value="{{ key }}" {% if form.fitness_level == key %}checked{% endif %} required>
+          <span><strong>{{ lv.label }}</strong><small>{{ lv.hint }}</small></span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="choice">
+      <legend>เป้าหมาย</legend>
+      <div class="segmented segmented-3">
+        {% for key, g in goals.items() %}
+        <label>
+          <input type="radio" name="goal" value="{{ key }}" data-kg="{{ g.kg or '' }}" data-kg-label="{{ g.kg_label or '' }}"
+                 {% if form.goal == key %}checked{% endif %} required>
+          <span>{{ g.label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <label id="kg-field">
+      <span id="kg-label">อยากลดกี่กิโล</span>
+      <span class="input-unit"><input type="number" name="kg_change" min="0.5" max="50" step="0.5" value="{{ form.kg_change }}" inputmode="decimal"><span>กก.</span></span>
+    </label>
+
+    <fieldset class="choice">
+      <legend>อุปกรณ์ที่มี</legend>
+      <div class="segmented segmented-3">
+        {% for key, label in equipment.items() %}
+        <label>
+          <input type="radio" name="equipment" value="{{ key }}" {% if form.equipment == key %}checked{% endif %} required>
+          <span>{{ label.split(' (')[0] }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <div class="row">
+      <label>ส่วนสูง
+        <span class="input-unit"><input type="number" name="height_cm" min="100" max="250" step="0.1" required value="{{ form.height_cm }}" inputmode="decimal"><span>ซม.</span></span>
+      </label>
+      <label>น้ำหนัก
+        <span class="input-unit"><input type="number" name="weight_kg" min="30" max="300" step="0.1" required value="{{ form.weight_kg }}" inputmode="decimal"><span>กก.</span></span>
+      </label>
+    </div>
+    <div class="row">
+      <label>อายุ
+        <span class="input-unit"><input type="number" name="age" min="18" max="100" required value="{{ form.age }}" inputmode="numeric"><span>ปี</span></span>
+      </label>
+      <label>เพศ
+        <select name="sex" required>
+          <option value="" disabled {% if not form.sex %}selected{% endif %}>เลือก</option>
+          <option value="female" {% if form.sex == 'female' %}selected{% endif %}>หญิง</option>
+          <option value="male" {% if form.sex == 'male' %}selected{% endif %}>ชาย</option>
+        </select>
+      </label>
+    </div>
+
+    <label>ปกติคุณขยับตัวแค่ไหน
+      <select name="activity" required>
+        <option value="" disabled {% if not form.activity %}selected{% endif %}>เลือก</option>
+        {% for key, label in activities.items() %}
+        <option value="{{ key }}" {% if form.activity == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <button type="submit" class="btn btn-primary btn-block">{% if editing %}บันทึกข้อมูล{% else %}เริ่มใช้งาน{% endif %}</button>
+  </form>
+
+  {% if editing %}
+  <p class="signout"><a href="/logout">ออกจากระบบ</a></p>
+  {% endif %}
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+  const form = document.getElementById('profile-form');
+  const field = document.getElementById('kg-field');
+  const label = document.getElementById('kg-label');
+  const input = field.querySelector('input');
+  function syncGoal() {
+    const goal = form.querySelector('input[name=goal]:checked');
+    const mode = goal ? goal.dataset.kg : '';
+    field.hidden = !mode;
+    input.disabled = !mode;
+    input.required = mode === 'required';
+    if (goal) label.textContent = goal.dataset.kgLabel;
+  }
+  form.addEventListener('change', syncGoal);
+  syncGoal();
+  form.addEventListener('submit', () => {
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
+  });
+</script>
+{% endblock %}

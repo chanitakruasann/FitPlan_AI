@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}ตารางออกกำลังกาย · ฟิตตามคลิป{% endblock %}
+{% block body %}
+<main class="page wide schedule">
+  <h1>ตารางออกกำลังกาย</h1>
+  <p class="lead" id="context"></p>
+
+  <section class="analysis" aria-live="polite">
+    <div class="score" id="score" hidden>
+      <div class="score-total">
+        <span class="score-label">คะแนนตาราง</span>
+        <span class="score-num"><span id="score-num">–</span><span class="of">/100</span></span>
+      </div>
+      <ul class="parts" id="parts"></ul>
+    </div>
+    <dl class="stats" id="stats"></dl>
+    <ul class="findings" id="findings"></ul>
+    <button type="button" class="btn btn-outline" id="advice-btn">ให้ AI สรุปและแนะนำ</button>
+    <p class="error" id="advice-error" role="alert" hidden></p>
+    <div class="advice" id="advice" hidden>
+      <p id="advice-overview"></p>
+      <ul id="advice-list"></ul>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>รายสัปดาห์</h2>
+    <p class="hint first">แต่ละวันใส่ได้ทั้งโปรแกรมที่ระบบจัดท่าให้ (เช่น ขา, อก) และคลิป YouTube วันที่ว่างคือวันพัก</p>
+    <ol class="week" id="week"></ol>
+  </section>
+
+  <section class="block">
+    <h2>เพิ่มคลิปเข้าคลัง</h2>
+    <form id="video-form" class="search">
+      <label class="sr-only" for="video-url">ลิงก์คลิป YouTube</label>
+      <input id="video-url" inputmode="url" maxlength="300" placeholder="วางลิงก์คลิป YouTube" autocomplete="off" required>
+      <button type="submit" class="btn btn-primary">วิเคราะห์</button>
+    </form>
+    <p class="hint" id="video-status" hidden></p>
+    <p class="error" id="video-error" role="alert" hidden></p>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="/static/schedule.js"></script>{% endblock %}

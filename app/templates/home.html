@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="page home">
+  <section class="today" aria-live="polite">
+    <div class="today-top">
+      <p class="today-label" id="remaining-label">เหลือกินได้อีก</p>
+      <p class="streak" id="streak" hidden></p>
+    </div>
+    <p class="today-number"><span id="remaining-num">–</span><span class="unit">แคล</span></p>
+    <div class="balance" id="balance" role="img" aria-label="">
+      <div class="balance-eaten" id="bar-eaten"></div>
+      <div class="balance-burned" id="bar-burned"></div>
+    </div>
+    <dl class="figures">
+      <div><dt>เป้าหมายวันละ</dt><dd id="fig-target">–</dd></div>
+      <div><dt><i class="dot eaten"></i>กินแล้ว</dt><dd id="fig-eaten">–</dd></div>
+      <div><dt><i class="dot burned"></i>เผาแล้ว</dt><dd id="fig-burned">–</dd></div>
+    </dl>
+    <p class="plan-note">
+      {{ goal_label }}{% if plan.weeks %} ถ้าทำตามนี้จะถึงเป้าในประมาณ {{ plan.weeks|round|int }} สัปดาห์{% endif %}
+      (BMI ปัจจุบัน {{ plan.bmi }})
+    </p>
+  </section>
+
+  <!-- เมื่อวานมีแผนแต่ยังไม่ได้บันทึก -->
+  <section class="notice" id="pending" hidden>
+    <p id="pending-text"></p>
+    <div class="actions">
+      <button type="button" class="btn btn-small" id="pending-done">ทำแล้ว</button>
+      <button type="button" class="btn btn-small btn-quiet" id="pending-skip">ไม่ได้ทำ</button>
+    </div>
+  </section>
+
+  <!-- วันนี้ควรออกอะไร -->
+  <section class="block" id="plan-section">
+    <div class="section-head">
+      <h2 id="plan-heading">วันนี้</h2>
+      <a href="/schedule">จัดตาราง</a>
+    </div>
+    <div id="plan"></div>
+    <div class="panel proposal" id="proposal" hidden>
+      <p id="proposal-text"></p>
+      <div class="actions" id="proposal-actions"></div>
+    </div>
+  </section>
+
+  <!-- วันนี้อยากออกส่วนไหน -->
+  <section class="block" id="workout" data-weight="{{ user.weight_kg|round(1) }}">
+    <h2>อยากออกส่วนไหนวันนี้</h2>
+    <p class="hint first">เลือกส่วนที่อยากฝึก ระบบจะจัดท่า จำนวนเซต และจำนวนครั้งให้ตามระดับและเป้าหมายของคุณ</p>
+    <form id="gen-form" class="gen-form">
+      <div class="chips" role="radiogroup" aria-label="ส่วนที่อยากฝึก">
+        {% for key, t in targets.items() %}
+        <label class="chip"><input type="radio" name="target" value="{{ key }}" {% if loop.first %}checked{% endif %}><span>{{ t.label }}</span></label>
+        {% endfor %}
+      </div>
+      <div class="gen-row">
+        <label class="inline">มีเวลา
+          <select name="minutes">
+            {% for m in [20, 30, 45, 60] %}
+            <option value="{{ m }}" {% if m == default_minutes %}selected{% endif %}>{{ m }} นาที</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="btn btn-primary">จัดท่าให้</button>
+      </div>
+    </form>
+    <p class="error" id="gen-error" role="alert" hidden></p>
+    <div class="panel" id="gen-result" hidden></div>
+
+    <details class="more">
+      <summary>หรือวิเคราะห์คลิป YouTube ที่จะทำตาม</summary>
+      <form id="video-form" class="search">
+        <label class="sr-only" for="video-url">ลิงก์คลิป YouTube</label>
+        <input id="video-url" inputmode="url" maxlength="300" placeholder="วางลิงก์คลิป YouTube" autocomplete="off" required>
+        <button type="submit" class="btn btn-primary">วิเคราะห์</button>
+      </form>
+      <p class="hint" id="video-wait" hidden>กำลังดูคลิป คลิปยาวอาจใช้เวลาราวหนึ่งนาที</p>
+      <p class="error" id="video-error" role="alert" hidden></p>
+      <div class="panel" id="clip" hidden>
+        <a class="clip-title" id="clip-title" target="_blank" rel="noopener"></a>
+        <p class="clip-kcal" id="clip-kcal"></p>
+        <p class="meta" id="clip-meta"></p>
+        <ol class="segments" id="clip-segments"></ol>
+        <label>ทำไปแค่ไหน
+          <select id="clip-portion">
+            <option value="1" selected>ครบทั้งคลิป</option>
+            <option value="0.75">ประมาณ 3 ใน 4</option>
+            <option value="0.5">ครึ่งคลิป</option>
+            <option value="0.25">ประมาณ 1 ใน 4</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn-primary btn-block" id="clip-save">บันทึกว่าออกกำลังกายแล้ว</button>
+      </div>
+    </details>
+
+    <ul class="list log" id="workout-log"></ul>
+  </section>
+
+  <section class="block">
+    <h2>วันนี้กินอะไรไป</h2>
+    <form id="food-search" class="search">
+      <label class="sr-only" for="food-name">ชื่ออาหาร</label>
+      <input id="food-name" name="name" maxlength="100" placeholder="เช่น ข้าวมันไก่, ชาไทยเย็น" autocomplete="off" required>
+      <button type="submit" class="btn btn-primary">ประเมิน</button>
+    </form>
+    <p class="error" id="food-error" role="alert" hidden></p>
+    <div class="panel" id="estimate" hidden>
+      <p class="estimate-name" id="est-name"></p>
+      <p class="meta" id="est-meta"></p>
+      <div class="row">
+        <label>จำนวน
+          <select id="est-servings">
+            <option value="0.5">ครึ่งหน่วย</option>
+            <option value="1" selected>1 หน่วย</option>
+            <option value="1.5">1.5 หน่วย</option>
+            <option value="2">2 หน่วย</option>
+          </select>
+        </label>
+        <label>แคลต่อหน่วย
+          <input type="number" id="est-kcal" min="0" max="5000" step="1" inputmode="numeric">
+        </label>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="est-save">บันทึกมื้อนี้</button>
+    </div>
+    <ul class="list log" id="food-log"></ul>
+    <p class="empty" id="food-empty" hidden>ยังไม่ได้บันทึกอาหารวันนี้ พิมพ์ชื่อเมนูด้านบนเพื่อเริ่ม</p>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="/static/home.js"></script>{% endblock %}

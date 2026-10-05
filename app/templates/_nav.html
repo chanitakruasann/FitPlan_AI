@@ -1,0 +1,21 @@
+<nav class="nav" aria-label="เมนูหลัก">
+  <a class="nav-brand" href="/">ฟิตตามคลิป</a>
+  <div class="nav-links">
+    <a href="/" {% if active == 'home' %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20h-5.5v-5.5h-5V20H4z"/></svg>
+      <span>วันนี้</span>
+    </a>
+    <a href="/schedule" {% if active == 'schedule' %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></svg>
+      <span>ตาราง</span>
+    </a>
+    <a href="/progress" {% if active == 'progress' %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 15l4-4 3 3 5-6"/></svg>
+      <span>ความก้าวหน้า</span>
+    </a>
+    <a href="/onboarding" {% if active == 'profile' %}aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>
+      <span>ข้อมูลของฉัน</span>
+    </a>
+  </div>
+</nav>
