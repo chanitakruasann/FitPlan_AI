@@ -378,6 +378,21 @@ table.weeks { width: 100%; border-collapse: collapse; font-size: .9rem; white-sp
   .segmented-3 span { font-size: .85rem; }
 }
 
+/* ---------- เข้าสู่ระบบด้วยชื่อผู้ใช้ ---------- */
+.login { justify-content: flex-start; padding-top: clamp(2.5rem, 10vh, 6rem); }
+.divider { display: flex; align-items: center; gap: .75rem; margin: 2rem 0 1.25rem; color: var(--muted); font-size: .85rem; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.auth-form { gap: 1rem; }
+.field-hint { color: var(--muted); font-size: .8rem; font-weight: 400; }
+.switch { margin-top: 1rem; font-size: .92rem; color: var(--muted); }
+.switch a { font-weight: 500; }
+.account-info { display: grid; gap: .6rem; margin: 0 0 1.25rem; }
+.account-info div { display: grid; grid-template-columns: 6rem 1fr; gap: 1rem; }
+.account-info dt { color: var(--muted); font-size: .9rem; }
+.account-info dd { margin: 0; }
+.ok-note { color: var(--green); background: #e8f5ee; padding: .6rem .8rem; border-radius: 10px; font-size: .9rem; margin-bottom: 1rem; }
+.warn-note a { color: inherit; font-weight: 600; }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: calc(100% - 2.5rem);

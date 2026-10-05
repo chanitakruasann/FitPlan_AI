@@ -1,12 +1,13 @@
 """หน้าเว็บ + เข้าสู่ระบบ + ข้อมูลร่างกาย"""
 import secrets
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import auth_line, calc, config
+from .. import auth_line, calc, config, passwords
 from ..db import get_db
 from ..deps import current_user, profile_complete, templates
 from ..models import User
@@ -64,13 +65,74 @@ def progress_page(request: Request, db: Session = Depends(get_db)):
     return _page(request, db, "progress.html", "progress")
 
 
+def _login_page(request: Request, mode: str = "login", errors: list[str] | None = None,
+                username: str = "", status: int = 200):
+    line_error = request.query_params.get("error")
+    return templates.TemplateResponse(request, "login.html", {
+        "mode": mode, "errors": errors or [], "username": username,
+        "line_error": line_error, "dev_login": config.DEV_LOGIN,
+    }, status_code=status)
+
+
 @router.get("/login")
 def login_page(request: Request, db: Session = Depends(get_db)):
     if current_user(request, db):
         return RedirectResponse("/", 303)
-    return templates.TemplateResponse(request, "login.html", {
-        "error": request.query_params.get("error"), "dev_login": config.DEV_LOGIN,
-    })
+    mode = "register" if request.query_params.get("mode") == "register" else "login"
+    return _login_page(request, mode)
+
+
+def _sign_in(request: Request, user: User) -> RedirectResponse:
+    request.session.clear()   # กัน session fixation
+    request.session["user_id"] = user.id
+    return RedirectResponse("/", 303)
+
+
+@router.post("/auth/register")
+def register(request: Request, username: str = Form(""), password: str = Form(""), password2: str = Form(""),
+             db: Session = Depends(get_db)):
+    username = username.strip()
+    errors = passwords.validate_new_account(username, password, password2)
+    key = passwords.username_key(username)
+    if not errors and db.scalar(select(User).where(User.username_key == key)):
+        errors.append("ชื่อผู้ใช้นี้มีคนใช้แล้ว ลองชื่ออื่น")
+    if errors:
+        return _login_page(request, "register", errors, username, 422)
+    user = User(username=username, username_key=key, password_hash=passwords.hash_password(password),
+                display_name=username, failed_logins=0)
+    db.add(user)
+    db.commit()
+    return _sign_in(request, user)
+
+
+@router.post("/auth/login")
+def password_login(request: Request, username: str = Form(""), password: str = Form(""),
+                   db: Session = Depends(get_db)):
+    wrong = ["ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"]
+    user = db.scalar(select(User).where(User.username_key == passwords.username_key(username)))
+    if not user or not user.password_hash:
+        passwords.verify_password(password, passwords.hash_password("x"))   # ใช้เวลาเท่ากัน ไม่บอกใบ้ว่ามีชื่อนี้ไหม
+        return _login_page(request, "login", wrong, username.strip(), 401)
+
+    now = datetime.now(timezone.utc)
+    locked = user.locked_until
+    if locked and locked.tzinfo is None:
+        locked = locked.replace(tzinfo=timezone.utc)
+    if locked and locked > now:
+        mins = max(1, int((locked - now).total_seconds() // 60) + 1)
+        return _login_page(request, "login", [f"ใส่รหัสผิดหลายครั้ง ลองใหม่ในอีก {mins} นาที"], username.strip(), 429)
+
+    if not passwords.verify_password(password, user.password_hash):
+        user.failed_logins = (user.failed_logins or 0) + 1
+        if user.failed_logins >= passwords.MAX_FAILED:
+            user.failed_logins = 0
+            user.locked_until = now + timedelta(minutes=passwords.LOCK_MINUTES)
+        db.commit()
+        return _login_page(request, "login", wrong, username.strip(), 401)
+
+    user.failed_logins, user.locked_until = 0, None
+    db.commit()
+    return _sign_in(request, user)
 
 
 @router.get("/logout")
@@ -85,6 +147,7 @@ def _onboarding(request, user, form, errors, status=200):
         "user": user, "form": form, "errors": errors,
         "activities": calc.ACTIVITY_LABELS, "goals": calc.GOALS, "levels": calc.LEVELS, "equipment": calc.EQUIPMENT,
         "editing": editing, "active": "profile" if editing else "",
+        "linked": request.query_params.get("linked"), "link_error": request.query_params.get("link_error"),
     }, status_code=status)
 
 
@@ -137,10 +200,12 @@ def onboarding_submit(
 
 
 @router.get("/auth/line/login")
-def line_login(request: Request):
+def line_login(request: Request, link: int = 0, db: Session = Depends(get_db)):
+    """link=1: ผู้ใช้ที่สมัครด้วยรหัสผ่าน ขอเชื่อมบัญชี LINE เพื่อรับแจ้งเตือน"""
     state, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(24)
     request.session["oauth_state"] = state
     request.session["oauth_nonce"] = nonce
+    request.session["oauth_link"] = bool(link and current_user(request, db))
     return RedirectResponse(auth_line.build_login_url(state, nonce), 302)
 
 
@@ -149,16 +214,30 @@ def line_callback(request: Request, code: str | None = None, state: str | None =
                   error: str | None = None, db: Session = Depends(get_db)):
     expected_state = request.session.pop("oauth_state", None)
     nonce = request.session.pop("oauth_nonce", None)
+    linking = request.session.pop("oauth_link", False)
+    fail = "/onboarding?link_error=1" if linking else "/login?error=1"
     if error or not code or not state or state != expected_state:
-        return RedirectResponse("/login?error=1", 303)
+        return RedirectResponse(fail, 303)
     try:
         tokens = auth_line.exchange_code(code)
         profile = auth_line.verify_id_token(tokens["id_token"], nonce)
     except Exception:
-        return RedirectResponse("/login?error=1", 303)
+        return RedirectResponse(fail, 303)
+
+    if linking:
+        user = current_user(request, db)
+        if not user:
+            return RedirectResponse("/login", 303)
+        owner = db.scalar(select(User).where(User.line_user_id == profile["sub"]))
+        if owner and owner.id != user.id:
+            return RedirectResponse("/onboarding?link_error=taken", 303)
+        user.line_user_id = profile["sub"]
+        user.picture_url = profile.get("picture") or user.picture_url
+        db.commit()
+        return RedirectResponse("/onboarding?linked=1", 303)
+
     user = upsert_user(db, profile["sub"], profile.get("name") or "เพื่อน", profile.get("picture"))
-    request.session["user_id"] = user.id
-    return RedirectResponse("/", 303)
+    return _sign_in(request, user)
 
 
 @router.get("/auth/dev-login")
@@ -167,5 +246,4 @@ def dev_login(request: Request, name: str = "ทดสอบ", db: Session = Dep
     if not config.DEV_LOGIN:
         raise HTTPException(404)
     user = upsert_user(db, f"dev-{name}", name, None)
-    request.session["user_id"] = user.id
-    return RedirectResponse("/", 303)
+    return _sign_in(request, user)

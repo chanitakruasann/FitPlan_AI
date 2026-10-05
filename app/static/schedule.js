@@ -107,6 +107,7 @@ function dayRow(day) {
 
 async function load() {
   data = await api('/api/schedule');
+  $('line-hint').hidden = data.line_linked || !data.days.some((d) => d.items.length);
   renderAnalysis();
   $('week').replaceChildren(...data.days.map(dayRow));
 }

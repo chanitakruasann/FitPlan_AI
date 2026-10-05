@@ -94,6 +94,24 @@
   </form>
 
   {% if editing %}
+  <section class="block account" id="account">
+    <h2>บัญชี</h2>
+    {% if linked %}<p class="ok-note" role="status">เชื่อม LINE สำเร็จแล้ว ต่อไปจะได้รับแจ้งเตือนตามตาราง</p>{% endif %}
+    {% if link_error == "taken" %}
+    <p class="error" role="alert">บัญชี LINE นี้ถูกใช้กับผู้ใช้อื่นในเว็บแล้ว ลองออกจากระบบแล้วเข้าด้วย LINE แทน</p>
+    {% elif link_error %}
+    <p class="error" role="alert">เชื่อม LINE ไม่สำเร็จ ลองอีกครั้ง</p>
+    {% endif %}
+    <dl class="account-info">
+      {% if user.username %}<div><dt>ชื่อผู้ใช้</dt><dd>{{ user.username }}</dd></div>{% endif %}
+      <div><dt>LINE</dt>
+        <dd>{% if user.line_user_id and not user.line_user_id.startswith('dev-') %}เชื่อมแล้ว รับแจ้งเตือนได้
+            {% else %}ยังไม่ได้เชื่อม จึงยังไม่ได้รับแจ้งเตือน{% endif %}</dd></div>
+    </dl>
+    {% if not user.line_user_id or user.line_user_id.startswith('dev-') %}
+    <a class="btn btn-line" href="/auth/line/login?link=1">เชื่อมบัญชี LINE เพื่อรับแจ้งเตือน</a>
+    {% endif %}
+  </section>
   <p class="signout"><a href="/logout">ออกจากระบบ</a></p>
   {% endif %}
 </main>

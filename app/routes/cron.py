@@ -40,6 +40,8 @@ def cron_remind(x_cron_secret: str | None = Header(None), db: Session = Depends(
     sent = failed = 0
     for uid in user_ids:
         user = db.get(User, uid)
+        if not user.line_user_id:   # สมัครด้วยรหัสผ่านและยังไม่เชื่อม LINE → ส่งแจ้งเตือนไม่ได้
+            continue
         items = planning.planned_items(db, user, d)
         if not items:
             continue

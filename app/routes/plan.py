@@ -40,6 +40,7 @@ def schedule_get(user: User = Depends(require_user_api), db: Session = Depends(g
         "programs": [{"key": k, "label": t["label"]} for k, t in ex.TARGETS.items()],
         "program_minutes": ex.DEFAULT_MINUTES[level],
         "level": calc.LEVELS[level]["label"], "goal": calc.goal_label(user.goal, user.kg_change),
+        "line_linked": bool(user.line_user_id) and not user.line_user_id.startswith("dev-"),
     }
 
 

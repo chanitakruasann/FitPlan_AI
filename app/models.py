@@ -10,7 +10,13 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    line_user_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    # เข้าสู่ระบบได้ 2 ทาง: LINE (line_user_id) หรือ ชื่อผู้ใช้ + รหัสผ่าน มีอย่างใดอย่างหนึ่งหรือทั้งคู่
+    line_user_id: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
+    username: Mapped[str | None] = mapped_column(String(30))
+    username_key: Mapped[str | None] = mapped_column(String(30), unique=True, index=True)   # ตัวพิมพ์เล็ก ใช้ค้นหา
+    password_hash: Mapped[str | None] = mapped_column(String(200))
+    failed_logins: Mapped[int] = mapped_column(default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     display_name: Mapped[str] = mapped_column(String(100))
     picture_url: Mapped[str | None] = mapped_column(String(500))
 
